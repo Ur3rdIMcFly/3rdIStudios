@@ -1,7 +1,6 @@
 void setup() {
   size(400, 400);
-}
-
+  
 // Scroll down to "About" for instructions on this project ↓
 
 var Tile = function(x, y, face) {
@@ -147,3 +146,5 @@ draw = function() {
 };
 
 noLoop();
+
+}
