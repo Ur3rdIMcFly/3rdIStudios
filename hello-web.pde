@@ -1,150 +1,143 @@
+// Press 'w' to start wiggling, space to restore
+// original positions.
+
+PShape cube;
+float cubeSize = 320;
+float circleRad = 100;
+int circleRes = 40;
+float noiseMag = 1;
+
+boolean wiggling = false;
+
 void setup() {
-  size(400, 400);
-  
-// Scroll down to "About" for instructions on this project ↓
+  size(1024, 768, P3D);    
 
-var Tile = function(x, y, face) {
-    this.x = x;
-    this.y = y;
-    this.width = 70;
-    this.face = face;
-    this.isFaceUp = false;
-    this.isMatch = false;
-};
-
-Tile.prototype.draw = function() {
-    fill(214, 247, 202);
-    strokeWeight(2);
-    rect(this.x, this.y, this.width, this.width, 10);
-    if (this.isFaceUp) {
-        image(this.face, this.x, this.y, this.width, this.width);
-    } else {
-        image(getImage("avatars/leaf-green"), this.x, this.y, this.width, this.width);
-    }
-};
-
-Tile.prototype.isUnderMouse = function(x, y) {
-    return x >= this.x && x <= this.x + this.width  &&
-        y >= this.y && y <= this.y + this.width;
-};
-
-// Global config
-var NUM_COLS = 5;
-var NUM_ROWS = 4;
-
-// Declare an array of all possible faces
-var faces = [
-    getImage("avatars/leafers-seed"),
-    getImage("avatars/leafers-seedling"),
-    getImage("avatars/leafers-sapling"),
-    getImage("avatars/leafers-tree"),
-    getImage("avatars/leafers-ultimate"),
-    getImage("avatars/marcimus"),
-    getImage("avatars/mr-pants"),
-    getImage("avatars/mr-pink"),
-    getImage("avatars/old-spice-man"),
-    getImage("avatars/robot_female_1")
-];
-
-// Make an array which has 2 of each, then randomize it
-var possibleFaces = faces.slice(0);
-var selected = [];
-for (var i = 0; i < (NUM_COLS * NUM_ROWS) / 2; i++) {
-    // Randomly pick one from the array of remaining faces
-    var randomInd = floor(random(possibleFaces.length));
-    var face = possibleFaces[randomInd];
-    // Push twice onto array
-    selected.push(face);
-    selected.push(face);
-    // Remove from array
-    possibleFaces.splice(randomInd, 1);
+  createCube();
 }
 
-// Now shuffle the elements of that array
-var shuffleArray = function(array) {
-    var counter = array.length;
+void draw() {
+  background(0);
 
-    // While there are elements in the array
-    while (counter > 0) {
-        // Pick a random index
-        var ind = Math.floor(Math.random() * counter);
-        // Decrease counter by 1
-        counter--;
-        // And swap the last element with it
-        var temp = array[counter];
-        array[counter] = array[ind];
-        array[ind] = temp;
-    }
-};
-shuffleArray(selected);
+  translate(width/2, height/2);
+  rotateX(frameCount * 0.01f);
+  rotateY(frameCount * 0.01f);
 
-// Create the tiles
-var tiles = [];
-for (var i = 0; i < NUM_COLS; i++) {
-    for (var j = 0; j < NUM_ROWS; j++) {
-        var tileX = i * 78 + 10;
-        var tileY = j * 78 + 40;
-        var tileFace = selected.pop();
-        tiles.push(new Tile(tileX, tileY, tileFace));
+  shape(cube);
+
+  if (wiggling) {
+    PVector pos = null;
+    for (int i = 0; i < cube.getChildCount(); i++) {
+      PShape face = cube.getChild(i);
+      for (int j = 0; j < face.getVertexCount(); j++) {
+        pos = face.getVertex(j, pos);
+        pos.x += random(-noiseMag/2, +noiseMag/2);
+        pos.y += random(-noiseMag/2, +noiseMag/2);
+        pos.z += random(-noiseMag/2, +noiseMag/2);
+        face.setVertex(j, pos.x, pos.y, pos.z);
+      }
     }
+  }
+
+  if (frameCount % 60 == 0) println(frameRate);
 }
 
-background(255, 255, 255);
+public void keyPressed() {
+  if (key == 'w') {
+    wiggling = !wiggling;
+  } else if (key == ' ') {
+    restoreCube();
+  } else if (key == '1') {
+    cube.setStrokeWeight(1);
+  } else if (key == '2') {
+    cube.setStrokeWeight(5);
+  } else if (key == '3') {
+    cube.setStrokeWeight(10);
+  }
+}
 
-var numTries = 0;
-var numMatches = 0;
-var flippedTiles = [];
-var delayStartFC = null;
+void createCube() {
+  cube = createShape(GROUP);  
 
+  PShape face;
 
-mouseClicked = function() {
-    for (var i = 0; i < tiles.length; i++) {
-        var tile = tiles[i];
-        if (tile.isUnderMouse(mouseX, mouseY)) {
-            if (flippedTiles.length < 2 && !tile.isFaceUp) {
-                tile.isFaceUp = true;
-                flippedTiles.push(tile);
-                if (flippedTiles.length === 2) {
-                    numTries++;
-                    if (flippedTiles[0].face === flippedTiles[1].face) {
-                        flippedTiles[0].isMatch = true;
-                        flippedTiles[1].isMatch = true;
-                        flippedTiles.length = 0;
-                        numMatches++;
-                    }
-                    delayStartFC = frameCount;
-                }
-            } 
-            loop();
-        }
-    }
-};
+  // Create all faces at front position
+  for (int i = 0; i < 6; i++) {
+    face = createShape();
+    createFaceWithHole(face);
+    cube.addChild(face);
+  }
 
-draw = function() {
-    background(255, 255, 255);
-    if (delayStartFC && (frameCount - delayStartFC) > 30) {
-        for (var i = 0; i < tiles.length; i++) {
-            var tile = tiles[i];
-            if (!tile.isMatch) {
-                tile.isFaceUp = false;
-            }
-        }
-        flippedTiles = [];
-        delayStartFC = null;
-        noLoop();
-    }
-    
-    for (var i = 0; i < tiles.length; i++) {
-        tiles[i].draw();
-    }
-    
-    if (numMatches === tiles.length/2) {
-        fill(0, 0, 0);
-        textSize(20);
-        text("You found them all in " + numTries + " tries!", 20, 375);
-    }
-};
+  // Rotate all the faces to their positions
 
-noLoop();
+  // Front face - already correct
+  face = cube.getChild(0);
 
+  // Back face
+  face = cube.getChild(1);
+  face.rotateY(radians(180));
+
+  // Right face
+  face = cube.getChild(2);
+  face.rotateY(radians(90));
+
+  // Left face
+  face = cube.getChild(3);
+  face.rotateY(radians(-90));
+
+  // Top face
+  face = cube.getChild(4);
+  face.rotateX(radians(90));
+
+  // Bottom face
+  face = cube.getChild(5);
+  face.rotateX(radians(-90));
+}
+
+void createFaceWithHole(PShape face) {
+  face.beginShape(POLYGON);
+  face.stroke(255, 0, 0);
+  face.fill(255);
+
+  // Draw main shape Clockwise
+  face.vertex(-cubeSize/2, -cubeSize/2, +cubeSize/2);
+  face.vertex(+cubeSize/2, -cubeSize/2, +cubeSize/2);
+  face.vertex(+cubeSize/2, +cubeSize/2, +cubeSize/2);
+  face.vertex(-cubeSize / 2, +cubeSize / 2, +cubeSize / 2);
+
+  // Draw contour (hole) Counter-Clockwise
+  face.beginContour();
+  for (int i = 0; i < circleRes; i++) {
+    float angle = TWO_PI * i / circleRes;
+    float x = circleRad * sin(angle);
+    float y = circleRad * cos(angle);
+    float z = +cubeSize/2;
+    face.vertex(x, y, z);
+  }
+  face.endContour();
+
+  face.endShape(CLOSE);
+}
+
+void restoreCube() {
+  // Rotation of faces is preserved, so we just reset them
+  // the same way as the "front" face and they will stay
+  // rotated correctly
+  for (int i = 0; i < 6; i++) {
+    PShape face = cube.getChild(i);
+    restoreFaceWithHole(face);
+  }
+}
+
+void restoreFaceWithHole(PShape face) {
+  face.setVertex(0, -cubeSize/2, -cubeSize/2, +cubeSize/2);
+  face.setVertex(1, +cubeSize/2, -cubeSize/2, +cubeSize/2);
+  face.setVertex(2, +cubeSize/2, +cubeSize/2, +cubeSize/2);
+  face.setVertex(3, -cubeSize/2, +cubeSize/2, +cubeSize/2);
+  for (int i = 0; i < circleRes; i++) {
+    float angle = TWO_PI * i / circleRes;
+    float x = circleRad * sin(angle);
+    float y = circleRad * cos(angle);
+    float z = +cubeSize/2;
+    face.setVertex(4 + i, x, y, z);
+  }
 }
